@@ -1,6 +1,6 @@
 import gym
 from gym.spaces import Box, Dict
-from gym.spaces import Discrete, MultiDiscrete
+from gym.spaces import MultiDiscrete
 import numpy as np
 import Database
 import RWA
@@ -19,9 +19,9 @@ class AuGraphEnv(gym.Env):
     # 初始化
     def __init__(self, env_config):
         # # 5 个动作位（分别对应 5 类边）。每个位可选的绝对权重档位：
-        self.edge_types = ["GrmE", "LPE", "TxE", "WLE", "MuxE"]
-        self.action_levels = np.array([0, 5, 50, 200, 500, 1000], dtype=np.float32)
-        self.action_space = MultiDiscrete([len(self.action_levels)] * len(self.edge_types))
+        # self.edge_types = ["GrmE", "LPE", "TxE", "WLE", "MuxE"]
+        # self.action_levels = np.array([0, 5, 50, 200, 500, 1000], dtype=np.float32)
+        # self.action_space = MultiDiscrete([len(self.action_levels)] * len(self.edge_types))
 
         # self.action_levels = {
         #     "GrmE": np.array([0, 10, 20, 40, 1000], dtype=np.float32),
@@ -31,7 +31,7 @@ class AuGraphEnv(gym.Env):
         #     "MuxE": np.array([0, 1, 5, 10], dtype=np.float32),
         # }
         # self.action_space = MultiDiscrete([len(self.action_levels[t]) for t in self.edge_types])
-
+        self.action_space = Box(low=np.zeros(5, dtype=np.float32), high=np.ones(5, dtype=np.float32), dtype=np.float32)
         self.observation_space = Dict({
             # 各边间的剩余容量
             'phylink': Box(low=-1*np.ones([2 *Database.link_number, Database.wavelength_number * Database.time]),
@@ -50,7 +50,6 @@ class AuGraphEnv(gym.Env):
         # 生成双向：把 (u,v) 与 (v,u) 拼起来得到 24 条
         self.u_dir = self.u + self.v
         self.v_dir = self.v + self.u
-
         # self.init()
         self.reset()
 
@@ -88,9 +87,10 @@ class AuGraphEnv(gym.Env):
     def step(self, action) -> tuple:
         self.step_num += 1
 
-        idx = np.asarray(action, dtype=np.int64)
-        action_t = np.array([self.action_levels[i] for i in idx], dtype=np.float32)
+        # idx = np.asarray(action, dtype=np.int64)
+        # action_t = np.array([self.action_levels[i] for i in idx], dtype=np.float32)
         # action_t = np.array([self.action_levels[t][i] for t, i in zip(self.edge_types, idx)], dtype=np.float32)
+        action_t = (np.asarray(action, dtype=np.float32) * 1000.0)
 
         request_index_current = self.observation['request_index'][0]  # 当前业务索引
         # 需要将动作参数（辅助图权重）传入辅助图初始化，然后进行路由，计算物理链路剩余带宽，作为奖励
@@ -117,7 +117,7 @@ class AuGraphEnv(gym.Env):
                 'request_dest': [request_dest],
                 'request_traffic': request_traffic
             }
-            reward = lightpath_num * 50 * (-1)
+            reward = lightpath_num * (-1)
             AuGraphEnv.lightpath_cumulate += lightpath_num
             print('id', request_index_current, 'weight', action_t, "lightpath_cum", AuGraphEnv.lightpath_cumulate,
                   "lightpath_cur", lightpath_num, "reward", reward)
@@ -138,7 +138,7 @@ class AuGraphEnv(gym.Env):
                 'request_dest': [request_dest],
                 'request_traffic': request_traffic
             }
-            reward = -500
+            reward = -10
             print('id', request_index_current, 'weight', action_t, "lightpath_cum", AuGraphEnv.lightpath_cumulate, "lightpath_cur", lightpath_num, "reward", reward)
 
         AuGraphEnv.au_edge_list = au_edge_collection

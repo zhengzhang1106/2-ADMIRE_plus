@@ -61,7 +61,7 @@ class AuGraphEnvRestore(gym.Env):
         :return: 返回环境初始化状态
         """
         print("reset")
-        Service.generate_service(0,Database.time)  # 产生业务
+        Service.generate_service(0, Database.time)  # 产生业务
         Database.clear(Database.links_physical)  # 清空物理链路
         AuGraph.links_virtual_list.clear()      # 清空虚拟链路
         index = 0
@@ -119,7 +119,7 @@ class AuGraphEnvRestore(gym.Env):
                 'request_traffic': request_traffic
             }
             # reward = (AuGraphEnv.lightpath_cumulate - lightpath_num) * 50   # 新增加波长的负值，有博客说reward在0-1之间比较好，
-            reward = lightpath_num * 50 * (-1)  # 新增加波长的负值，有博客说reward在0-1之间比较好，
+            reward = lightpath_num * (-1)  # 新增加波长的负值，有博客说reward在0-1之间比较好，
             AuGraphEnvRestore.lightpath_cumulate += lightpath_num
             print('id', request_index_current, 'weight', action_t, "lightpath_cum",
                   AuGraphEnvRestore.lightpath_cumulate, "lightpath_cur", lightpath_num, "reward", reward)

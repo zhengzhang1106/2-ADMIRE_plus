@@ -53,9 +53,9 @@ tunerun = tune.run(
         "shuffle_sequences": True,
         # Number of SGD iterations in each outer loop (i.e., number of epochs to
         # execute per train batch).
-        "num_sgd_iter": 15,
+        "num_sgd_iter": 10,
         # Stepsize of SGD.
-        "lr": 1e-4,  # tune.grid_search([1e-4, 5e-5]),
+        "lr": tune.grid_search([1e-5, 5e-5]),
         # Learning rate schedule.
         "lr_schedule": None,
         # Coefficient of the value function loss. IMPORTANT: you must tune this if
@@ -65,8 +65,9 @@ tunerun = tune.run(
         "entropy_coeff": 0.01,
         # Decay schedule for the entropy regularizer.
         "entropy_coeff_schedule": None,
+        # "entropy_coeff_schedule": [[0, 0.01], [150 * 2048, 0.0]],  # 150是训练轮次，2048是train_batch_size
         # PPO clip parameter.
-        "clip_param": 0.2,
+        "clip_param": 0.1,
         # Clip param for the value function. Note that this is sensitive to the
         # scale of the rewards. If your expected V is large, increase this.
         "vf_clip_param": 10,
@@ -91,35 +92,48 @@ tunerun = tune.run(
         # 自定义模型
         'model': {
             'custom_model': 'augraph_model',
-            "post_fcnet_hiddens": [256, 128],
-            "post_fcnet_activation": 'relu',  # tune.grid_search(['relu','tanh'])
+            "post_fcnet_hiddens": [256],
+            "post_fcnet_activation": 'relu',
         },
 
         'gamma': 0.98,      # 奖励衰减
-        # 'timesteps_per_iteration': 100,    # 每次迭代100个step
+        # 'timesteps_per_iteration': 100,
 
+        # feature_dim必须和model输出后的变量维度相同，因为将库里面feature_net取消了，直接用_last_embedding代替
         # === Exploration Settings ===
         "exploration_config": {
             "type": "ICM",  # <- Use the Curiosity module for exploring.
             "eta": 0.1,   # Weight for intrinsic rewards before being added to extrinsic ones.
-            "lr": 1e-4,  # Learning rate of the curiosity (ICM) module.
-            "feature_dim": 128,   # Dimensionality of the generated feature vectors.
+            "lr": 1e-5,  # Learning rate of the curiosity (ICM) module.
+            "feature_dim": 128,  # Dimensionality of the generated feature vectors.
             # Setup of the feature net (used to encode observations into feature (latent) vectors).
             "feature_net_config": {
                 "fcnet_hiddens": [256, 128],
                 "fcnet_activation": "relu",
             },
             "inverse_net_hiddens": [128, 128],
-            "inverse_net_activation": "relu",  # Activation of the "inverse" model.
+            "inverse_net_activation": "relu",   # Activation of the "inverse" model.
             "forward_net_hiddens": [128, 128],  # Hidden layers of the "forward" model.
             "forward_net_activation": "relu",  # Activation of the "forward" model.
             "beta": 0.2,  # Weight for the "forward" loss (beta) over the "inverse" loss (1.0 - beta).
             # Specify, which exploration sub-type to use (usually, the algo's "default"
             # exploration, e.g. EpsilonGreedy for DQN, StochasticSampling for PG/SAC).
+
             "sub_exploration": {
-                "type": "StochasticSampling",
-            },
-            # "type": "StochasticSampling",
+                "type": "GaussianNoise",
+                # For how many timesteps should we return completely random actions,
+                # before we start adding (scaled) noise?
+                "random_timesteps": 5000,
+                # Gaussian stddev of action noise for exploration.
+                "stddev": 0.1,
+                # Scaling settings by which the Gaussian noise is scaled before
+                # being added to the actions. NOTE: The scale timesteps start only
+                # after(!) any random steps have been finished.
+                # By default, do not anneal over time (fixed 1.0).
+                "initial_scale": 1.0,
+                "final_scale": 1.0,
+                "scale_timesteps": 1,
+            }
         },
         # Switch to greedy actions in evaluation workers.
         "evaluation_config": {

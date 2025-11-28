@@ -52,18 +52,18 @@ config_re = {
     # execute per train batch).
     "num_sgd_iter": 15,
     # Stepsize of SGD.
-    "lr": 1e-4,  # tune.grid_search([1e-4, 5e-5]),
+    "lr": 5e-5,  # tune.grid_search([1e-4, 5e-5]),
     # Learning rate schedule.
     "lr_schedule": None,
     # Coefficient of the value function loss. IMPORTANT: you must tune this if
     # you set vf_share_layers=True inside your model's config.
     "vf_loss_coeff": 1.0,
     # Coefficient of the entropy regularizer.
-    "entropy_coeff": 0.01,
+    "entropy_coeff": 0,
     # Decay schedule for the entropy regularizer.
     "entropy_coeff_schedule": None,
     # PPO clip parameter.
-    "clip_param": 0.2,
+    "clip_param": 0.1,
     # Clip param for the value function. Note that this is sensitive to the
     # scale of the rewards. If your expected V is large, increase this.
     "vf_clip_param": 10,
@@ -98,8 +98,8 @@ config_re = {
     # === Exploration Settings ===
     "exploration_config": {
         "type": "ICM",  # <- Use the Curiosity module for exploring.
-        "eta": 0.1,   # Weight for intrinsic rewards before being added to extrinsic ones.
-        "lr": 1e-4,  # Learning rate of the curiosity (ICM) module.
+        "eta": 0.05,   # Weight for intrinsic rewards before being added to extrinsic ones.
+        "lr": 5e-5,  # Learning rate of the curiosity (ICM) module.
         "feature_dim": 128,   # Dimensionality of the generated feature vectors.
         # Setup of the feature net (used to encode observations into feature (latent) vectors).
         "feature_net_config": {
@@ -139,7 +139,7 @@ done = False
 obs = env.reset()
 
 count = 0  # 可以在测试的时候也多跑几次，取一个最好的，把explore开启之后是能选到训练时最好的路径
-reward_max = -10000
+reward_max = -1000
 reward_list = []    # 奖励集合
 while count < 20:
     virtual_hop_cumulate = 0  # 累计虚拟拓扑跳数

@@ -35,6 +35,8 @@ class AuGraphModel(TorchModelV2, nn.Module):
         self.g = dgl.to_bidirected(g)
         self.lg = dgl.line_graph(self.g, backtracking=False)
 
+        # phylink(24, 72)
+        num_edges = self.original_space['phylink'].shape[0]
         in_feats = self.original_space['phylink'].shape[1]
         n_hidden = 32
         num_heads = 3
@@ -42,15 +44,18 @@ class AuGraphModel(TorchModelV2, nn.Module):
         # ---------- GNN ----------
         self._edge_gnn = nn.ModuleList()
         self._edge_gnn.append(GATv2Conv(in_feats, n_hidden, num_heads=num_heads, allow_zero_in_degree=True))
-        self._edge_gnn.append(GATv2Conv(n_hidden*num_heads, n_hidden, num_heads=num_heads, allow_zero_in_degree=True))
+        self._edge_gnn.append(GATv2Conv(n_hidden * num_heads, n_hidden, num_heads=num_heads, allow_zero_in_degree=True))
 
-        self.gnn_fc1 = nn.Linear(num_heads * n_hidden, 256)
-        self.gnn_fc2 = nn.Linear(256, 128)
+        # gnn_hiddens = [1024, 256]
+        # self.gnn_fc1 = nn.Linear(num_heads * n_hidden * num_edges, gnn_hiddens[0])
+        gnn_hiddens = [256, 128]
+        self.gnn_fc1 = nn.Linear(num_heads * n_hidden, gnn_hiddens[0])
+        self.gnn_fc2 = nn.Linear(gnn_hiddens[0], gnn_hiddens[1])
         self.activation = nn.ReLU()
         self.dropout = nn.Dropout(p=0.1)
-        self.layernorm = nn.LayerNorm(128)
+        self.layernorm = nn.LayerNorm(gnn_hiddens[1])
 
-        concat_size = 128  # 记录处理后连接起来的总长
+        concat_size = gnn_hiddens[1]  # 记录处理后连接起来的总长
         concat_size += (self.original_space['request_src'].high - self.original_space['request_src'].low)[0] + 1
         concat_size += (self.original_space['request_dest'].high - self.original_space['request_dest'].low)[0] + 1
         concat_size += self.original_space['request_traffic'].shape[0]
@@ -74,7 +79,6 @@ class AuGraphModel(TorchModelV2, nn.Module):
             in_size = out_size
         self._hidden = nn.Sequential(*post_fc_layers)   # 全连接层输出
 
-        self.embedding_dim = out_size
         # 用于给 ICM 读取的缓存
         self._last_embedding = None
 
@@ -105,17 +109,19 @@ class AuGraphModel(TorchModelV2, nn.Module):
 
         B, E, F = phylink.shape  # B个样本，每个样本E条物理链路，每条链路F维特征
         blg = dgl.batch([self.lg] * B)  # batch化的线图：B个完全相同的 line_graph
-        h = phylink.reshape(B * E, F)  # 把(B,E,F)摊平成(B*E,F)，作为 line_graph 上每个“节点”的特征
+        h = phylink.reshape(B * E, F)   # 把(B,E,F)摊平成(B*E,F)，作为 line_graph 上每个“节点”的特征
 
         for li, layer in enumerate(self._edge_gnn):
             h_out = layer(blg, h)  # GAT: 内部已经做了消息传递
-            h = h_out.reshape(h_out.shape[0], -1)  # (B*E, num_heads * n_hidden) = (B*E,96)
+            h = h_out.reshape(h_out.shape[0], -1)  # (B*E, num_heads * n_hidden) = (B*E, 96)
 
         gat_out = h.reshape(B, E, -1)  # (B, E, 96)
         x_gnn = gat_out.mean(dim=1)  # (B, 96)
-        x_gnn = self.activation(self.gnn_fc1(x_gnn))  # (B, 256)
+        # (B, 96)->(B, 256)->(B, 128)
+        x_gnn = self.gnn_fc1(x_gnn)
+        x_gnn = self.activation(x_gnn)
         x_gnn = self.dropout(x_gnn)
-        x_gnn = self.gnn_fc2(x_gnn)  # (B, 128)
+        x_gnn = self.gnn_fc2(x_gnn)
         x_gnn = self.layernorm(x_gnn)
 
         outs = []   # 记录输出，送入fc
@@ -131,18 +137,18 @@ class AuGraphModel(TorchModelV2, nn.Module):
 
         outs.append(request_traffic)    # 目前流量就直接加进去了
 
-        out_add = torch.cat(outs, dim=1)  # 拼接在一起
+        out_add = torch.cat(outs, dim=1)  # gnn_hidden[1]+9+9+24
         out = self._hidden(out_add)
         self._last_embedding = out  # 这行是给 ICM 用的 embedding
 
-        if not self.logits_layer is None:
-            logits, values = self.logits_layer(out), self.value_layer(out)
-            # print(logits.shape)
-            self._value_out = torch.reshape(values, [-1])  # 表示将矩阵形式的value展平
-            # return logits + inf_mask, []
-            return logits, []
-        else:
-            return out, []
+        # if not self.logits_layer is None:
+        #     logits, values = self.logits_layer(out), self.value_layer(out)
+        #     # print(logits.shape)
+        #     self._value_out = torch.reshape(values, [-1])  # 表示将矩阵形式的value展平
+        #     # return logits + inf_mask, []
+        #     return logits, []
+        # else:
+        #     return out, []
 
     @override(ModelV2)
     def value_function(self):
