@@ -171,3 +171,4 @@ class AuGraphEnv(gym.Env):
         for k, (i, j) in enumerate(zip(self.u_dir, self.v_dir)):
             arr[k, :] = links_physical[:, i, j].astype(np.float32)  # 72 维
         return arr  # shape: (24, 72)
+

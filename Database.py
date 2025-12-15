@@ -11,6 +11,9 @@ wavelength_number_all = link_number * wavelength_number * 2  # 72
 
 time = 24  # 所有时刻数量，目前认为是24小时
 
+# data_path = 'traffic/Traffic0717.csv'   # 只有一个时刻
+# data_path = 'traffic/Traffic0822.csv'     # 30个训练集（不再使用）
+
 data_path0 = 'traffic/traffic_2020-09-14.csv'
 data_path1 = 'traffic/traffic_2020-09-16.csv'
 data_path2 = 'traffic/traffic_2020-09-17.csv'
@@ -34,10 +37,17 @@ data_path19 = 'traffic/traffic_2020-10-12.csv'
 data_path20 = 'traffic/traffic_2020-10-13.csv'
 data_path21 = 'traffic/Traffic0704.csv'   # 100个测试集
 
-
 data_path_list = [data_path0,data_path1,data_path2,data_path3,data_path4,data_path5,data_path6,data_path7,
                   data_path8,data_path9,data_path10,data_path11,data_path12,data_path13, data_path14,
                   data_path15,data_path16,data_path17,data_path18,data_path19,data_path20,data_path21]
+
+# 随机产生的业务源（测试集）
+data_path_random6 = 'random/traffic_random6.csv'
+data_path_random26 = 'random/traffic_random26.csv'
+
+
+data_path_random_list = {6: data_path_random6, 26: data_path_random26,}
+
 
 # 辅助图权重
 # 最小化新建光路数
@@ -67,15 +77,27 @@ graph_connect = np.array([[0, 1, 1, 0, 1, 0, 0, 0, 0],
                           [0, 0, 0, 0, 1, 0, 0, 0, 1],
                           [0, 0, 0, 0, 0, 1, 1, 1, 0]], dtype=int)
 
+R, C = graph_connect.shape
+u, v = [], []
+for i in range(R):
+    for j in range(C):
+        if graph_connect[i][j] == 1:
+            u.append(i)
+            v.append(j)
+
+def get_directed_edge_list():
+    edges = []
+    row, col = graph_connect.shape
+    for i in range(row):
+        for j in range(col):
+            if graph_connect[i][j] == 1:
+                edges.append((i, j))
+    return edges
+
+
 # 物理链路及波长，考虑24小时，所以是72*9*9
 links_physical = np.zeros((time*wavelength_number, node_number, node_number))
-
-
-# wave = links_physical.shape[0]  # 维度
-# row = links_physical.shape[1]  # 行
-# col = links_physical.shape[2]  # 列
 wave, row, col = links_physical.shape
-# print('wave',wave)
 for i in range(row):
     for j in range(col):
         if graph_connect[i][j] == 1:
@@ -84,9 +106,6 @@ for i in range(row):
         else:
             for k in range(wave):
                 links_physical[k][i][j] = -1.
-
-
-# print(links_physical)
 
 
 def clear(links):
@@ -102,15 +121,17 @@ def clear(links):
     return links
 
 
-weight = [0, 20, 200, 500, 1000]
+weight = [0, 20, 100, 500, 1000]
 action_total = list(product(weight, repeat=5))
 
+# for i in range(len(action_total)):
+#     if action_total[i].count(weight[0])>=3 or action_total[i].count(weight[1])>=3 or action_total[i].count(weight[2])>=3 or action_total[i].count(weight[3])>=3 or action_total[i].count(weight[4])>=3 :
+#         action_total[i] = []
+#
+# action_total_tmp = [x for x in action_total if x]
+# action_total = action_total_tmp
 
 for i in range(len(action_total)):
     action_total[i] = np.array(action_total[i])
 action_total = np.array(action_total)
-
-
-
-
 
