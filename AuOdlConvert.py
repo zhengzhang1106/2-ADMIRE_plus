@@ -117,9 +117,9 @@ def odl_result(au_edges_list):
 
         else:
             # 部署失败
-            result_rwa_phy.append([cur_service['id']], -1)
-            result_rwa_vir.append([cur_service['id']], -1)
-            result_odl.append([cur_service['id']], -1)
+            result_rwa_phy.append([cur_service['id'], -1])
+            result_rwa_vir.append([cur_service['id'], -1])
+            result_odl.append([cur_service['id'], -1])
 
 
 # 根据新建和已建光路计算节点配置类型

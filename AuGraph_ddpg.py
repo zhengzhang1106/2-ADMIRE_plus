@@ -22,12 +22,14 @@ ray.init()
 ModelCatalog.register_custom_model('augraph_model', AuGraphModel)  # 使用自定义模型
 tunerun = tune.run(
     DDPGTrainer,
+    local_dir="./zheng/2-ADMIRE+",
     config={
         # 其他
         'env': AuGraphEnv,
         'framework': 'torch',
         'seed': seed_num,
-        'num_gpus': 0,
+        # 'num_gpus': int(os.environ.get("RLLIB_NUM_GPUS", "0")),  # GPU
+        'num_gpus': 0,  # GPU，需要<1
 
         # === Twin Delayed DDPG (TD3) and Soft Actor-Critic (SAC) tricks ===
         # TD3: https://spinningup.openai.com/en/latest/algorithms/td3.html
@@ -56,22 +58,33 @@ tunerun = tune.run(
         # Number of episodes to run per evaluation period.
         "evaluation_duration": 10,
 
-        # ========= Model ============
-        # 在进入actor和critic的隐藏层之前，会先运行'model'里的参数
-        "use_state_preprocessor": True,  # 可以使用自定义model
+        # === Model ===
+        # Apply a state preprocessor with spec given by the "model" config option
+        # (like other RL algorithms). This is mostly useful if you have a weird
+        # observation shape, like an image. Disabled by default.
+        "use_state_preprocessor": True,
+        # Postprocess the policy network model output with these hidden layers. If
+        # use_state_preprocessor is False, then these will be the *only* hidden
+        # layers in the network.
         "actor_hiddens": [128, 64],
+        # Hidden layers activation of the postprocessing stage of the policy
+        # network
         "actor_hidden_activation": "relu",
         # Postprocess the critic network model output with these hidden layers;
         # again, if use_state_preprocessor is True, then the state will be
         # preprocessed by the model specified with the "model" config option first.
         "critic_hiddens": [128, 64],
+        # Hidden layers activation of the postprocessing state of the critic.
         "critic_hidden_activation": "relu",
-        "n_step": 1,  # N-step Q learning
+        # N-step Q learning
+        "n_step": 1,
         # 自定义模型
         'model': {
             'custom_model': 'augraph_model',
-            "post_fcnet_hiddens": [256],
-            "post_fcnet_activation": 'relu',  # tune.grid_search(['relu','tanh'])
+            "post_fcnet_hiddens": [256, 256],
+            "post_fcnet_activation": 'relu',
+            "fcnet_hiddens": [512],
+            "fcnet_activation": 'relu',
         },
 
         # === Exploration ===
@@ -94,7 +107,6 @@ tunerun = tune.run(
             # Specify, which exploration sub-type to use (usually, the algo's "default"
             # exploration, e.g. EpsilonGreedy for DQN, StochasticSampling for PG/SAC).
 
-
             "sub_exploration": {
                 # TD3 uses simple Gaussian noise on top of deterministic NN-output
                 # actions (after a possible pure random phase of n timesteps).
@@ -114,7 +126,7 @@ tunerun = tune.run(
             }
         },
         # Number of env steps to optimize for before returning
-        'timesteps_per_iteration': 100,  # 每次迭代step数量
+        'timesteps_per_iteration': 500,  # 每次迭代step数量
         # Extra configuration that disables exploration.
         "evaluation_config": {
             "explore": False
@@ -165,9 +177,9 @@ tunerun = tune.run(
 
         # === Optimization ===
         # Learning rate for the critic (Q-function) optimizer.
-        "critic_lr": 1e-4,
+        "critic_lr": 3e-4,
         # Learning rate for the actor (policy) optimizer.
-        "actor_lr": 1e-5,
+        "actor_lr": 3e-4,
         # Update the target network every `target_network_update_freq` steps.
         "target_network_update_freq": 2000,
         # Update the target by \tau * policy + (1-\tau) * target_policy
@@ -182,7 +194,7 @@ tunerun = tune.run(
         # If not None, clip gradients during optimization at this value
         "grad_clip": None,
         # How many steps of the model to sample before learning starts.
-        "learning_starts": 5000,
+        "learning_starts": 4000,
         # Update the replay buffer with this many samples at once. Note that this
         # setting applies per-worker if num_workers > 1.
         "rollout_fragment_length": 10,
@@ -190,7 +202,6 @@ tunerun = tune.run(
         # if async_updates is set, then each worker returns gradients for a
         # batch of this size.
         "train_batch_size": 256,
-        'gamma': 0.98,     # 奖励衰减
 
         # === Parallelism ===
         # Number of workers for collecting samples with. This only makes sense
@@ -208,11 +219,11 @@ tunerun = tune.run(
         "_disable_execution_plan_api": False,
     },
     checkpoint_at_end=True,  # 结束时存储检查点
-    checkpoint_freq=1,      # 检查点之间的训练迭代次数
+    checkpoint_freq=1,  # 检查点之间的训练迭代次数
     # 隔几个training_iteration存储一次
     # restore=path #载入检查点
     stop={
-        'training_iteration': 150  # 训练轮次
+        'training_iteration': 200  # 训练轮次
     }
 )
 

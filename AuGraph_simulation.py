@@ -82,8 +82,24 @@ if __name__ == '__main__':
     #         file.write('\n')
     #     file.close()
     #
-    # with open('odl_minwl.txt', 'w') as file:
+    # with open('odl_traditional.txt', 'w') as file:
     #     for i in range(len(AuOdlConvert.result_odl)):
     #         file.write(str(AuOdlConvert.result_odl[i]))
     #         file.write('\n')
     #     file.close()
+    #
+    # linkmsg_phy = [[] for _ in range(Database.time)]
+    # row, col = Database.graph_connect.shape
+    # for t in range(Database.time):
+    #     for i in range(row):
+    #         for j in range(col):
+    #             if Database.graph_connect[i][j] == 1:
+    #                 linkmsg_phy[t].append({'src': i, 'dst': j,
+    #                                        str(t) + '_hour': Database.links_physical[t * 3:(t + 1) * 3, i, j].tolist()})
+    #
+    # for t in range(Database.time):
+    #     with open(str(t) + '_hour_links_traditional.txt', 'w') as file:
+    #         for k in range(len(linkmsg_phy[t])):
+    #             file.write(str(linkmsg_phy[t][k]))
+    #             file.write('\n')
+    #         file.close()

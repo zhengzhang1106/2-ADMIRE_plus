@@ -1,6 +1,6 @@
 import gym
-from gym.spaces import Box, Dict
-from gym.spaces import MultiDiscrete
+from gym.spaces import Box
+from gym.spaces import Dict
 import numpy as np
 import Database
 import RWA
@@ -19,19 +19,7 @@ class AuGraphEnvRestore(gym.Env):
 
     # 初始化
     def __init__(self, env_config):
-        # # 5 个动作位（分别对应 5 类边）。每个位可选的绝对权重档位：
-        self.edge_types = ["GrmE", "LPE", "TxE", "WLE", "MuxE"]
-        self.action_levels = np.array([0, 5, 50, 200, 500, 1000], dtype=np.float32)
-        self.action_space = MultiDiscrete([len(self.action_levels)] * len(self.edge_types))
-
-        # self.action_levels = {
-        #     "GrmE": np.array([0, 10, 20, 40, 1000], dtype=np.float32),
-        #     "LPE": np.array([0, 1, 2, 5], dtype=np.float32),
-        #     "TxE": np.array([20, 50, 100, 200, 300], dtype=np.float32),
-        #     "WLE": np.array([0, 5, 10, 20, 1000], dtype=np.float32),
-        #     "MuxE": np.array([0, 1, 5, 10], dtype=np.float32),
-        # }
-        # self.action_space = MultiDiscrete([len(self.action_levels[t]) for t in self.edge_types])
+        self.action_space = Box(low=np.zeros(5), high=Database.weight_max * np.ones(5), dtype=np.int32)
 
         self.observation_space = Dict({
             'phylink': Box(low=-1*np.ones([2 *Database.link_number, Database.wavelength_number * Database.time]),
@@ -46,12 +34,8 @@ class AuGraphEnvRestore(gym.Env):
             'request_traffic': Box(low=np.zeros(Database.time), high=10 * np.ones(Database.time), dtype=np.float32)
         })
 
-        self.u = [0, 0, 0, 1, 2, 2, 3, 4, 4, 5, 6, 7]
-        self.v = [1, 2, 4, 3, 3, 5, 6, 5, 7, 8, 8, 8]
-        # 生成双向：把 (u,v) 与 (v,u) 拼起来得到 24 条
-        self.u_dir = self.u + self.v
-        self.v_dir = self.v + self.u
-
+        # self.init()
+        # print("初始化！！！")
         self.reset()
 
     # 还原环境
@@ -81,17 +65,16 @@ class AuGraphEnvRestore(gym.Env):
         AuGraphEnvRestore.au_edge_list.clear()
         return self.observation
 
-    # 步骤，更新环境，设置奖励
+
     # 所选动作作用于环境后环境返回的奖励和下一步状态，并判断是否达到终止状态
     # :param action:输入是动作的序号
     # :return:输出是：下一步状态，立即回报，是否终止，调试项
     def step(self, action) -> tuple:
-        self.step_num += 1
-
-        idx = np.asarray(action, dtype=np.int64)
-        action_t = np.array([self.action_levels[i] for i in idx], dtype=np.float32)
-        # action_t = np.array([self.action_levels[t][i] for t, i in zip(self.edge_types, idx)], dtype=np.float32)
-
+        self.step_num += 1  # step数量加1
+        # print('step_num', self.step_num)
+        # print("action", action)
+        action_t = action * 1000     # 对输出的动作取绝对值
+        # print("action_new", action_t)
         request_index_current = self.observation['request_index'][0]  # 当前业务索引
         # print("index",request_index_current)
         # 需要将动作参数（辅助图权重）传入辅助图初始化，然后进行路由，计算物理链路剩余带宽，作为奖励
@@ -118,8 +101,7 @@ class AuGraphEnvRestore(gym.Env):
                 'request_dest': [request_dest],
                 'request_traffic': request_traffic
             }
-            # reward = (AuGraphEnv.lightpath_cumulate - lightpath_num) * 50   # 新增加波长的负值，有博客说reward在0-1之间比较好，
-            reward = lightpath_num * (-1)  # 新增加波长的负值，有博客说reward在0-1之间比较好，
+            reward = lightpath_num * (-1) * 50  # 新增加波长的负值，有博客说reward在0-1之间比较好，
             AuGraphEnvRestore.lightpath_cumulate += lightpath_num
             print('id', request_index_current, 'weight', action_t, "lightpath_cum",
                   AuGraphEnvRestore.lightpath_cumulate, "lightpath_cur", lightpath_num, "reward", reward)
@@ -140,8 +122,8 @@ class AuGraphEnvRestore(gym.Env):
                 'request_traffic': request_traffic
             }
             reward = -500
-
-            print('id', request_index_current, 'weight', action_t, "lightpath_cum", AuGraphEnvRestore.lightpath_cumulate, "lightpath_cur", lightpath_num, "reward", reward, )
+            print('id', request_index_current, 'weight', action_t, "lightpath_cum",
+                  AuGraphEnvRestore.lightpath_cumulate, "lightpath_cur", lightpath_num, "reward", reward, )
 
         AuGraphEnvRestore.au_edge_list = au_edge_collection
         return self.observation, reward, self.done, {}  # 最后的return全返回了，如果没到最左边或者最右边，self.done=False
@@ -156,19 +138,11 @@ class AuGraphEnvRestore(gym.Env):
         # print('id',Service.service_list[index]['id'],' src',src,' ,dest',dest,' traffic',traffic[0])
         return src, dest, traffic
 
-    # def linkmsg(self, links_physical):
-    #     linkmsg = []
-    #     row, col = Database.graph_connect.shape
-    #     for i in range(row):
-    #         for j in range(col):
-    #             if Database.graph_connect[i][j] == 1:
-    #                 linkmsg.append(links_physical[:, i, j].tolist())
-    #     return linkmsg   # 正常应该是(24, 72)维的列表
-
     def linkmsg(self, links_physical):
-        E = len(self.u_dir)  # 24
-        F = Database.wavelength_number * Database.time  # 72
-        arr = np.empty((E, F), dtype=np.float32)
-        for k, (i, j) in enumerate(zip(self.u_dir, self.v_dir)):
-            arr[k, :] = links_physical[:, i, j].astype(np.float32)  # 72 维
-        return arr  # shape: (24, 72)
+        linkmsg = []
+        row, col = Database.graph_connect.shape
+        for i in range(row):
+            for j in range(col):
+                if Database.graph_connect[i][j] == 1:
+                    linkmsg.append(links_physical[:, i, j].tolist())
+        return linkmsg   # 正常应该是(24, 72)维的列表
