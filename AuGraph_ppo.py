@@ -9,7 +9,7 @@ from ray.rllib.agents.ppo import PPOTrainer
 from ray.rllib.models.catalog import ModelCatalog
 
 # 设置随机种子
-seed_num = 1
+seed_num = 0
 np.random.seed(seed_num)
 random.seed(seed_num)
 torch.manual_seed(seed_num)
@@ -22,7 +22,7 @@ ray.init()
 ModelCatalog.register_custom_model('augraph_model', AuGraphModel)  # 使用自定义模型
 tunerun = tune.run(
     PPOTrainer,
-    # resume=True,
+    local_dir="./result",
     config={
         # 其他
         'env': AuGraphEnv,
@@ -55,7 +55,7 @@ tunerun = tune.run(
         # execute per train batch).
         "num_sgd_iter": 10,
         # Stepsize of SGD.
-        "lr": tune.grid_search([1e-5, 5e-5]),
+        "lr": 3e-4,  # tune.grid_search([1e-5, 5e-5]),
         # Learning rate schedule.
         "lr_schedule": None,
         # Coefficient of the value function loss. IMPORTANT: you must tune this if
@@ -92,8 +92,10 @@ tunerun = tune.run(
         # 自定义模型
         'model': {
             'custom_model': 'augraph_model',
-            "post_fcnet_hiddens": [256],
+            "post_fcnet_hiddens": [256, 256],
             "post_fcnet_activation": 'relu',
+            "fcnet_hiddens": [512],
+            "fcnet_activation": 'relu',
         },
 
         'gamma': 0.98,      # 奖励衰减
@@ -125,7 +127,7 @@ tunerun = tune.run(
                 # before we start adding (scaled) noise?
                 "random_timesteps": 5000,
                 # Gaussian stddev of action noise for exploration.
-                "stddev": 0.1,
+                "stddev": 0.05,
                 # Scaling settings by which the Gaussian noise is scaled before
                 # being added to the actions. NOTE: The scale timesteps start only
                 # after(!) any random steps have been finished.

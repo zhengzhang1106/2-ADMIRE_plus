@@ -22,7 +22,7 @@ ray.init()
 ModelCatalog.register_custom_model('augraph_model', AuGraphModel)  # 使用自定义模型
 tunerun = tune.run(
     DDPGTrainer,
-    local_dir="./zheng/2-ADMIRE+",
+    local_dir="./result",
     config={
         # 其他
         'env': AuGraphEnv,
@@ -91,14 +91,15 @@ tunerun = tune.run(
         "explore": True,
         "exploration_config": {
             "type": "ICM",  # <- Use the Curiosity module for exploring.
-            "eta": 0.1,   # Weight for intrinsic rewards before being added to extrinsic ones.
+            "eta": tune.grid_search([0.01, 0.05]),  # Weight for intrinsic rewards before being added to extrinsic ones.
             "lr": 1e-3,  # Learning rate of the curiosity (ICM) module.
-            "feature_dim": 288,  # Dimensionality of the generated feature vectors.
+            "feature_dim": 256,  # Dimensionality of the generated feature vectors.
             # Setup of the feature net (used to encode observations into feature (latent) vectors).
-            "feature_net_config": {
-                "fcnet_hiddens": [256, 128],
-                "fcnet_activation": "relu",
-            },
+            # "feature_net_config": {
+            #     "fcnet_hiddens": [256, 128],
+            #     "fcnet_activation": "relu",
+            # },
+            "feature_net_config": None,
             "inverse_net_hiddens": [256],
             "inverse_net_activation": "relu",   # Activation of the "inverse" model.
             "forward_net_hiddens": [256],  # Hidden layers of the "forward" model.
@@ -115,7 +116,7 @@ tunerun = tune.run(
                 # before we start adding (scaled) noise?
                 "random_timesteps": 5000,
                 # Gaussian stddev of action noise for exploration.
-                "stddev": 0.1,  # tune.grid_search([0.1, 0.15]),
+                "stddev": 0.05,  # tune.grid_search([0.1, 0.15]),
                 # Scaling settings by which the Gaussian noise is scaled before
                 # being added to the actions. NOTE: The scale timesteps start only
                 # after(!) any random steps have been finished.

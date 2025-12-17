@@ -18,7 +18,7 @@ class AuGraphEnv(gym.Env):
 
     # 初始化
     def __init__(self, env_config):
-        self.action_space = Box(low=np.zeros(5), high=Database.weight_max * np.ones(5), dtype=np.int32)
+        self.action_space = Box(low=np.zeros(5), high=Database.weight_max * np.ones(5), dtype=np.float32)
 
         self.observation_space = Dict({
             # 各边间的剩余容量
