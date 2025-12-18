@@ -67,9 +67,9 @@ def au_graph_init(weight):
                 count = 2
                 while count < layer:
                     # 智能
-                    au_graph_weight[i * single_num + layer + count][j * single_num + count] = weight[3] + count * 200  # 波长链路边,3,4,i=0,j=1,7->12,
+                    # au_graph_weight[i * single_num + layer + count][j * single_num + count] = weight[3] + count * 200  # 波长链路边,3,4,i=0,j=1,7->12,
                     # 传统
-                    # au_graph_weight[i * single_num + layer + count][j * single_num + count] = weight[3]  # 波长链路边,3,i=0,j=1,7->12,
+                    au_graph_weight[i * single_num + layer + count][j * single_num + count] = weight[3]  # 波长链路边,3,i=0,j=1,7->12,
                     count += 1
     return au_graph_weight
 

@@ -91,18 +91,17 @@ tunerun = tune.run(
         "explore": True,
         "exploration_config": {
             "type": "ICM",  # <- Use the Curiosity module for exploring.
-            "eta": tune.grid_search([0.01, 0.05]),  # Weight for intrinsic rewards before being added to extrinsic ones.
-            "lr": 1e-3,  # Learning rate of the curiosity (ICM) module.
-            "feature_dim": 256,  # Dimensionality of the generated feature vectors.
+            "eta": tune.grid_search([1, 0.8]),  # Weight for intrinsic rewards before being added to extrinsic ones.
+            "lr": 3e-4,  # Learning rate of the curiosity (ICM) module.
+            "feature_dim": 288,  # Dimensionality of the generated feature vectors.
             # Setup of the feature net (used to encode observations into feature (latent) vectors).
-            # "feature_net_config": {
-            #     "fcnet_hiddens": [256, 128],
-            #     "fcnet_activation": "relu",
-            # },
-            "feature_net_config": None,
-            "inverse_net_hiddens": [256],
+            "feature_net_config": {
+                "fcnet_hiddens": [512, 256],
+                "fcnet_activation": "relu",
+            },
+            "inverse_net_hiddens": [256, 256],
             "inverse_net_activation": "relu",   # Activation of the "inverse" model.
-            "forward_net_hiddens": [256],  # Hidden layers of the "forward" model.
+            "forward_net_hiddens": [512, 256],  # Hidden layers of the "forward" model.
             "forward_net_activation": "relu",  # Activation of the "forward" model.
             "beta": 0.2,  # Weight for the "forward" loss (beta) over the "inverse" loss (1.0 - beta).
             # Specify, which exploration sub-type to use (usually, the algo's "default"
